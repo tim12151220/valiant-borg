@@ -264,10 +264,26 @@ function renderLobbyPlayers() {
     if (p.isAI) tags += `<span class="player-tag-ai">AI: ${p.aiPersonality}</span>`;
     else if (p.id === game.players[0].id) tags += `<span class="player-tag-you">你</span>`;
 
+    const isSelf = p.id === game.players[0].id;
     li.innerHTML = `
       <span>👤 ${p.name} ${tags}</span>
-      ${game.players.length > 3 ? `<button class="btn-delete" data-id="${p.id}">✖</button>` : ''}
+      <div style="display: flex; gap: 0.5rem; align-items: center;">
+        ${isSelf ? `<button class="btn-rename" style="background:none; border:none; color:var(--glow-cyan); cursor:pointer; font-size:0.9rem;" title="修改稱呼">✏️</button>` : ''}
+        ${!isSelf && game.players.length > 3 ? `<button class="btn-delete" data-id="${p.id}" style="background:none; border:none; color:#ef4444; cursor:pointer;">✖</button>` : ''}
+      </div>
     `;
+
+    const renameBtn = li.querySelector('.btn-rename');
+    if (renameBtn) {
+      renameBtn.onclick = () => {
+        const cleanName = p.name.replace(' (你)', '').trim();
+        const newName = prompt("請輸入你想要的稱呼：", cleanName);
+        if (newName && newName.trim()) {
+          p.name = newName.trim() + ' (你)';
+          renderLobbyPlayers();
+        }
+      };
+    }
 
     const delBtn = li.querySelector('.btn-delete');
     if (delBtn) {
@@ -778,9 +794,11 @@ function handleNightCenterCardClick(activeRole, clickedIdx, cardWrapper) {
 function startDayScene() {
   showScene(SCENES.DAY);
   
-  // 恢復白天倒計時
-  game.dayTimeLeft = 180;
-  dom.dayTimer.innerText = "03:00";
+  // 恢復白天倒計時：討論時間為 人數 + 3 分鐘
+  const durationMinutes = game.players.length + 3;
+  game.dayTimeLeft = durationMinutes * 60;
+  const initialMin = String(durationMinutes).padStart(2, '0');
+  dom.dayTimer.innerText = `${initialMin}:00`;
   
   if (game.dayTimerId) clearInterval(game.dayTimerId);
   game.dayTimerId = setInterval(() => {
