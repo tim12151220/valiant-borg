@@ -12,6 +12,17 @@
   <link rel="stylesheet" href="css/styles.css">
 </head>
 <body class="dark-theme">
+  <!-- 登入命名強制 Overlay -->
+  <div id="welcome-overlay" class="floating-selector-overlay">
+    <div class="selector-menu-card" style="width: 380px; padding: 2.5rem; border-color: var(--glow-cyan); box-shadow: 0 0 35px rgba(6, 182, 212, 0.4);">
+      <span style="font-size: 3.5rem; filter: drop-shadow(0 0 10px var(--glow-cyan));">🐺</span>
+      <h2 class="title-glow" style="font-size: 1.65rem; margin-top: 1rem; margin-bottom: 0.5rem; text-shadow: 0 0 10px var(--glow-cyan);">一夜終極狼人殺</h2>
+      <p style="font-size: 0.85rem; color: #94a3b8; margin-bottom: 1.5rem; font-family: var(--font-tech);">請輸入你在此局遊戲中的稱呼：</p>
+      <input type="text" id="input-welcome-name" placeholder="輸入稱呼 (如: 狼人殺戰神)" autofocus maxlength="12" style="width:100%; background:rgba(0,0,0,0.6); border:1.5px solid var(--glow-cyan); color:white; padding:0.75rem 1rem; border-radius:10px; font-weight:bold; margin-bottom:1.5rem; text-align:center; outline:none; font-size:1.1rem; font-family: var(--font-main);">
+      <button id="btn-welcome-enter" class="btn btn-primary btn-glow" style="width:100%; font-size:1.1rem; padding:0.85rem; background: linear-gradient(135deg, var(--glow-cyan), #0891b2); box-shadow: 0 4px 15px rgba(6, 182, 212, 0.4);">進入大廳</button>
+    </div>
+  </div>
+
   <!-- 背景粒子與星空效果 -->
   <div class="stars-container"></div>
   <div class="fog-overlay"></div>

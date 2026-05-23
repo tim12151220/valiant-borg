@@ -14,7 +14,7 @@ let p2p = null;
 
 // 預設角色配置 (4人玩家 + 3底牌 = 7張牌)
 const DEFAULT_PLAYERS = [
-  { name: 'KuangTing (你)', isAI: false, aiPersonality: 'normal' },
+  { name: '玩家本人 (你)', isAI: false, aiPersonality: 'normal' },
   { name: '愛麗絲 🤖', isAI: true, aiPersonality: 'honest' },
   { name: '波比 🤖', isAI: true, aiPersonality: 'cunning' },
   { name: '查理 🤖', isAI: true, aiPersonality: 'chaotic' }
@@ -169,6 +169,37 @@ function initLobby() {
   
   // 2. 初始化預設選用角色
   game.rolesPool = [...DEFAULT_ROLES];
+
+  // 強制命名遮罩邏輯
+  const welcomeOverlay = document.getElementById('welcome-overlay');
+  const welcomeInput = document.getElementById('input-welcome-name');
+  const welcomeEnterBtn = document.getElementById('btn-welcome-enter');
+
+  welcomeEnterBtn.onclick = () => {
+    const wName = welcomeInput.value.trim();
+    if (!wName) {
+      alert("請輸入你的稱呼以開啟大廳！");
+      return;
+    }
+    // 更新第一個玩家（你）的稱呼
+    game.players[0].name = wName + ' (你)';
+    
+    // 隱藏強制遮罩 Overlay
+    welcomeOverlay.classList.add('hidden');
+    
+    // 語音旁白引導歡迎
+    tts.speak(`歡迎 ${wName} 來到一夜終極狼人殺`);
+
+    renderLobbyPlayers();
+    updateSetupCounts();
+    renderLobbyRoles();
+  };
+
+  welcomeInput.onkeydown = (e) => {
+    if (e.key === 'Enter') {
+      welcomeEnterBtn.click();
+    }
+  };
 
   renderLobbyPlayers();
   renderLobbyRoles();
@@ -410,7 +441,8 @@ function initP2P() {
   document.getElementById('btn-p2p-create').onclick = () => p2p.createRoom();
   document.getElementById('btn-p2p-join').onclick = () => {
     const rId = document.getElementById('input-room-id').value.trim();
-    if (rId) p2p.joinRoom(rId);
+    const myRealName = game.players[0].name.replace(' (你)', '').trim();
+    if (rId) p2p.joinRoom(rId, myRealName);
   };
   document.getElementById('btn-copy-room-id').onclick = () => {
     navigator.clipboard.writeText(p2p.roomId);

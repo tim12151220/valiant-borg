@@ -68,11 +68,13 @@ export class P2PManager {
   /**
    * 加入已存在的房間
    * @param {string} targetRoomId - 目標房間 ID
+   * @param {string} myName - 玩家自訂稱呼
    */
-  async joinRoom(targetRoomId) {
+  async joinRoom(targetRoomId, myName) {
     try {
       await this.loadPeerJS();
       this.isHost = false;
+      this.playerName = myName || '遠端玩家';
       this.logStatus("正在嘗試連線到房間...");
 
       this.peer = new window.Peer();
@@ -103,7 +105,7 @@ export class P2PManager {
       
       // 連線成功時，如果是 Client，發送加入訊號
       if (!this.isHost) {
-        this.send({ type: 'JOIN_LOBBY', playerName: '遠端玩家' });
+        this.send({ type: 'JOIN_LOBBY', playerName: this.playerName });
       }
     });
 
