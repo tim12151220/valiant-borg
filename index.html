@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>一夜終極狼人殺 - One Night Ultimate Werewolf</title>
+  <!-- SEO & Fonts -->
+  <meta name="description" content="極致精美的《一夜終極狼人殺》網頁版！支援 Pass & Play 聚會傳閱模式、AI 模擬單人模式、以及 WebRTC 遠端連線。配備 TTS 語音旁白與 3D 卡牌翻轉。">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Outfit:wght@300;400;600;800&family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body class="dark-theme">
+  <!-- 背景粒子與星空效果 -->
+  <div class="stars-container"></div>
+  <div class="fog-overlay"></div>
+
+  <!-- 頂部導覽列：包含遊戲模式、音效、語音旁白控制 -->
+  <header class="app-header">
+    <div class="logo">
+      <span class="logo-text">ONE NIGHT</span>
+      <span class="logo-subtext">ULTIMATE WEREWOLF</span>
+    </div>
+    <div class="header-controls">
+      <button id="btn-sound-toggle" class="icon-btn" title="切換音效">🔊</button>
+      <button id="btn-tts-toggle" class="icon-btn active" title="切換語音旁白">🗣️ 旁白: 開</button>
+      <button id="btn-debug-toggle" class="debug-btn" title="切換開發者面板">🛠️ 除錯</button>
+    </div>
+  </header>
+
+  <!-- 主容器：單頁應用程式區段 -->
+  <main class="game-container">
+    
+    <!-- 1. Lobby 準備與設定階段 -->
+    <section id="scene-lobby" class="game-scene active">
+      <div class="glass-card welcome-panel">
+        <h1 class="title-glow">選擇遊戲模式</h1>
+        <div class="mode-selector">
+          <button id="btn-mode-local" class="mode-btn active">
+            <span class="mode-icon">📱</span>
+            <div class="mode-info">
+              <h3>Pass & Play</h3>
+              <p>實體聚會傳閱模式（單機多人）</p>
+            </div>
+          </button>
+          <button id="btn-mode-ai" class="mode-btn">
+            <span class="mode-icon">🤖</span>
+            <div class="mode-info">
+              <h3>AI Sandbox</h3>
+              <p>智慧 AI 模擬對決（單人練習）</p>
+            </div>
+          </button>
+          <button id="btn-mode-p2p" class="mode-btn">
+            <span class="mode-icon">⚡</span>
+            <div class="mode-info">
+              <h3>WebRTC Multi</h3>
+              <p>P2P 遠端房間連線（線上多人）</p>
+            </div>
+          </button>
+        </div>
+
+        <!-- 玩家名單配置 -->
+        <div class="setup-section">
+          <div class="setup-col players-setup">
+            <h2>👥 玩家名單 (<span id="setup-player-count">4</span> 人)</h2>
+            <div class="player-list-wrapper">
+              <ul id="lobby-player-list" class="styled-list">
+                <!-- 玩家項目會動態生成 -->
+              </ul>
+              <div class="input-group" id="player-add-controls">
+                <input type="text" id="input-player-name" placeholder="輸入玩家名字..." maxlength="12">
+                <button id="btn-add-player" class="btn btn-secondary">新增</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 角色池配置 -->
+          <div class="setup-col roles-setup">
+            <h2>🎭 角色配置 (需選 <span id="setup-card-needed">7</span> 張牌，已選 <span id="setup-card-selected">0</span> 張)</h2>
+            <div class="preset-action-bar" style="margin-bottom: 1rem; display: flex; gap: 0.5rem; align-items: center;">
+              <button id="btn-apply-preset" class="btn btn-secondary btn-sm" style="border-color: var(--glow-cyan); color: var(--glow-cyan); font-weight: bold;">✨ 套用 <span id="preset-count">4</span>人黃金配置</button>
+              <span id="preset-logic-desc" style="font-size: 0.75rem; color: #94a3b8; font-style: italic;"></span>
+            </div>
+            <div class="role-grid" id="lobby-role-grid">
+              <!-- 角色卡片會動態生成 -->
+            </div>
+          </div>
+        </div>
+
+        <!-- P2P 連線連線面板 -->
+        <div id="p2p-panel" class="p2p-panel hidden">
+          <h2>⚡ WebRTC P2P 房間設定</h2>
+          <div class="p2p-controls">
+            <div class="p2p-host">
+              <button id="btn-p2p-create" class="btn btn-primary">創建房間</button>
+              <div id="p2p-room-info" class="hidden">
+                <p>分享你的房間 ID 給朋友：</p>
+                <div class="copy-box">
+                  <span id="text-room-id">--</span>
+                  <button id="btn-copy-room-id" class="btn btn-sm">複製</button>
+                </div>
+              </div>
+            </div>
+            <div class="p2p-divider">或</div>
+            <div class="p2p-join">
+              <input type="text" id="input-room-id" placeholder="輸入朋友的房間 ID...">
+              <button id="btn-p2p-join" class="btn btn-secondary">加入房間</button>
+            </div>
+          </div>
+          <div id="p2p-status" class="p2p-status-log">等待連線中...</div>
+        </div>
+
+        <div class="action-bar">
+          <button id="btn-start-game" class="btn btn-primary btn-lg btn-glow disabled">確認並發牌</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. 發牌與初始查看身分階段 -->
+    <section id="scene-dealing" class="game-scene">
+      <div class="glass-card center-panel">
+        <h2 id="dealing-title" class="title-glow">正在分配身份...</h2>
+        <div class="dealing-flow">
+          <div class="deal-prompt" id="deal-prompt-text">請把裝置交給第一位玩家，點擊下方按鈕查看初始身分。</div>
+          <!-- 3D 翻牌展示區 -->
+          <div class="card-display-area">
+            <div class="tarot-card-container active" id="deal-card-container">
+              <div class="tarot-card">
+                <div class="card-face card-back">
+                  <img src="assets/card_back.png" alt="卡牌背面">
+                </div>
+                <div class="card-face card-front" id="deal-card-front">
+                  <!-- 動態角色卡牌正面 -->
+                  <div class="role-frame">
+                    <img src="" id="deal-card-img" alt="角色插圖">
+                    <div class="role-name-overlay" id="deal-card-name">村民</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="deal-actions">
+            <button id="btn-deal-action" class="btn btn-primary btn-lg">查看初始身份</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. 夜晚閉眼防窺遮罩與行動階段 -->
+    <section id="scene-night" class="game-scene">
+      <!-- 所有人閉眼時的大遮罩 -->
+      <div class="night-overlay active" id="night-overlay-screen">
+        <div class="moon-loader">
+          <div class="moon-glowing"></div>
+          <div class="moon-sleepy-face">😴</div>
+        </div>
+        <h1 class="night-prompt-main">天黑請閉眼...</h1>
+        <p class="night-prompt-sub" id="night-narrator-text">所有玩家請緊閉雙眼，夜晚即將開始</p>
+        <button id="btn-skip-sleep" class="btn btn-sm btn-dark hidden">我已閉眼 (Pass & Play 用)</button>
+      </div>
+
+      <!-- 角色夜晚個別行動面板 -->
+      <div class="glass-card night-action-panel hidden" id="night-action-board">
+        <h2 id="night-role-title" class="title-glow">預言家時間</h2>
+        <div id="night-identity-banner" class="night-identity-banner"></div>
+        <div class="night-instruction" id="night-instruction-text">請選擇一位玩家的牌查看，或者選擇查看兩張底牌。</div>
+        
+        <!-- 桌面卡牌互動展示區 -->
+        <div class="game-table-layout">
+          <!-- 玩家卡牌 -->
+          <div class="table-players" id="night-table-players">
+            <!-- 動態生成玩家卡牌位置，夜晚只顯示卡背與名稱 -->
+          </div>
+          <!-- 3 張底牌 -->
+          <div class="table-center-cards">
+            <h3>🎴 桌上底牌 (Center Cards)</h3>
+            <div class="center-cards-container" id="night-table-center">
+              <!-- 底牌 0, 1, 2 -->
+            </div>
+          </div>
+        </div>
+
+        <div class="night-actions">
+          <button id="btn-night-confirm" class="btn btn-primary btn-lg disabled">確認行動</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. 白天討論階段 -->
+    <section id="scene-day" class="game-scene">
+      <div class="glass-card main-game-board">
+        <div class="board-header">
+          <div class="timer-widget">
+            <span class="timer-icon">⏳</span>
+            <span id="day-timer" class="timer-digits">05:00</span>
+          </div>
+          <h2 class="title-glow">☀️ 天亮了，請睜眼討論！</h2>
+        </div>
+
+        <div class="day-layout">
+          <!-- 玩家卡牌展示區（白天只有自己是卡面，其他人都是卡背，除非有能力看過） -->
+          <div class="board-col main-table">
+            <h3>👥 存活玩家 (以新身份結算)</h3>
+            <div class="players-display-grid" id="day-players-grid">
+              <!-- 動態填充玩家項目 -->
+            </div>
+            
+            <div class="center-cards-showcase">
+              <h3>🎴 桌面底牌 (不准觸碰)</h3>
+              <div class="center-cards-container" id="day-center-grid">
+                <!-- 3張底牌 -->
+              </div>
+            </div>
+          </div>
+
+          <!-- 右側 AI 推理發言牆 / 討論記錄 -->
+          <div class="board-col chat-table">
+            <h3>💬 玩家發言與推理牆</h3>
+            <div class="discussion-chat-log" id="discussion-chat-log">
+              <div class="chat-msg system">天亮了，討論開始！系統已模擬出 AI 玩家的最新心思，注意每個人所說的話...</div>
+            </div>
+            <!-- 如果是 AI 模式，玩家可以發表言論 -->
+            <div class="chat-input-box" id="player-chat-input-box">
+              <input type="text" id="input-day-speech" placeholder="輸入你想說的謊言或推理..." maxlength="50">
+              <button id="btn-send-speech" class="btn btn-secondary">發言</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="action-bar">
+          <button id="btn-force-vote" class="btn btn-danger btn-glow">結束討論並投票</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5. 投票階段 -->
+    <section id="scene-voting" class="game-scene">
+      <div class="glass-card center-panel">
+        <h1 class="title-glow">🗳️ 緊張的投票時刻！</h1>
+        <p class="vote-instruction">請點擊你想投死的對象頭像。每個人都必須投票，得票最高者死亡！</p>
+        
+        <div class="voting-board" id="voting-board-grid">
+          <!-- 投票卡牌，可點選 -->
+        </div>
+
+        <!-- 倒數計時與強迫亮票 -->
+        <div class="action-bar">
+          <button id="btn-submit-vote" class="btn btn-primary btn-lg btn-glow disabled">確認投票</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 6. 結局與軌跡結算階段 -->
+    <section id="scene-result" class="game-scene">
+      <div class="glass-card result-panel">
+        <h1 id="result-winner-title" class="result-winner-title title-glow">村民陣營獲勝！</h1>
+        <p id="result-summary-text" class="result-summary-sub">死者中包含了狼人！</p>
+
+        <!-- 死亡名單 -->
+        <div class="death-list-card" id="death-list-card">
+          <h3>💀 死亡玩家：</h3>
+          <div class="death-names" id="death-names-list">無人死亡</div>
+        </div>
+
+        <!-- 卡牌軌跡演變圖 (Role Timeline Trace) -->
+        <div class="history-trace-section">
+          <h2>🔮 卡牌乾坤大挪移軌跡 (Role Timeline Trace)</h2>
+          <p class="trace-desc">追蹤每張牌的初始身份、交換過程到最終身份：</p>
+          <div class="trace-timeline-container" id="trace-timeline-container">
+            <!-- 動態生成時間軸卡片軌跡 -->
+          </div>
+        </div>
+
+        <div class="action-bar">
+          <button id="btn-restart-game" class="btn btn-primary btn-lg btn-glow">再玩一局</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- 🛠️ 開發者除錯懸浮控制台 (Developer Console Overlay) -->
+  <aside id="developer-console" class="dev-console hidden">
+    <div class="dev-header">
+      <h4>🛠️ Developer Debug Panel</h4>
+      <button id="btn-close-debug">✖</button>
+    </div>
+    <div class="dev-body">
+      <div class="dev-section">
+        <h5>當前卡牌流向 (即時解密)</h5>
+        <div class="dev-card-info" id="dev-card-flux">
+          <!-- 即時顯示每個人當前手牌 -->
+        </div>
+      </div>
+      <div class="dev-section">
+        <h5>狀態跳轉工具</h5>
+        <div class="dev-states-buttons">
+          <button onclick="window.debugJump('lobby')">Lobby</button>
+          <button onclick="window.debugJump('dealing')">Dealing</button>
+          <button onclick="window.debugJump('night')">Night</button>
+          <button onclick="window.debugJump('day')">Day</button>
+          <button onclick="window.debugJump('voting')">Voting</button>
+          <button onclick="window.debugJump('result')">Result</button>
+        </div>
+      </div>
+      <div class="dev-section">
+        <h5>除錯捷徑</h5>
+        <button id="btn-debug-cheat" class="btn btn-secondary btn-sm">全場翻開身份</button>
+        <button id="btn-debug-random-setup" class="btn btn-secondary btn-sm">隨機填入測試資料</button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- 全域模組 JS 載入 -->
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
