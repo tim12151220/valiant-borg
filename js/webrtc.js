@@ -7,7 +7,7 @@ const ICE_CONFIG = {
     iceServers: [
       // 穩定的全球 STUN 伺服器群
       { urls: 'stun:stun.l.google.com:19302' },
-      { urls: 'stun:global.stun.twilio.com:3478?transport=udp' },
+      { urls: 'stun:global.stun.twilio.com:3478' },
       { urls: 'stun:stun.cloudflare.com:3478' },
       // 免費且高穿透力的公共 TURN (Relay) 中繼伺服器，解決對稱型 NAT 與學校/公司嚴格防火牆限制
       {
