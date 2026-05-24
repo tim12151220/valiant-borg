@@ -136,6 +136,7 @@ let currentSelectedCards = []; // 夜晚行動中玩家選定的卡片
 let clientVoteSelected = null; // 當前玩家投票的對象 ID
 let cheatMode = false; // 是否透視
 let nightActionConfirmed = false; // 夜晚行動確認鎖，防止技能重複觸發
+let confirmedNightIndices = new Set(); // 記錄本機玩家已確認行動的夜晚 Index，防範 P2P 網路抖動或重繪導致的重複交換卡牌與複製卡牌 Bug
 
 /* ==========================================================================
    A. 介面跳轉控制
@@ -554,6 +555,7 @@ function initP2P() {
     } else if (msg.type === 'KICKED') {
       p2p.disconnect();
       game.reset();
+      confirmedNightIndices.clear();
       showScene(SCENES.LOBBY);
       switchMode('local');
       alert("⚠️ 你已被房主踢出房間！");
@@ -683,6 +685,7 @@ function initP2P() {
       showResultScene(msg.winnerResult);
     } else if (msg.type === 'RESTART_GAME') {
       game.reset();
+      confirmedNightIndices.clear();
       showScene(SCENES.LOBBY);
       renderLobbyPlayers();
       updateSetupCounts();
@@ -987,6 +990,13 @@ function syncNightActionToHost() {
 }
 
 function renderNightBoard(role, activePlayer, isSimulated) {
+  // 防重複確認大招：若本機玩家在當前夜晚輪次已經確認過，則強行轉為模擬等待畫面，絕不允許重複操作與卡牌對調
+  const mySelf = game.players.find(p => p.id === myPlayerId) || game.players[0];
+  const isMyTurn = mySelf && mySelf.initialRole === role.id && !isSimulated;
+  if (isMyTurn && confirmedNightIndices.has(game.currentNightIndex)) {
+    isSimulated = true;
+  }
+
   if (isSimulated || !activePlayer) {
     dom.nightNarratorText.innerText = `${role.name}正在行動中...`;
     dom.nightOverlayScreen.classList.add('active');
@@ -1022,6 +1032,7 @@ function renderNightBoard(role, activePlayer, isSimulated) {
     dom.btnNightConfirm.classList.remove('disabled');
     dom.btnNightConfirm.onclick = () => {
       nightActionConfirmed = true;
+      confirmedNightIndices.add(game.currentNightIndex);
       dom.btnNightConfirm.classList.add('disabled');
       tts.speak("確認完畢", () => {
         if (game.finishActiveNightAction && activePlayer) {
@@ -1121,6 +1132,7 @@ function handleNightCardClick(activeRole, clickedPlayer, cardWrapper) {
 
     dom.btnNightConfirm.onclick = () => {
       nightActionConfirmed = true;
+      confirmedNightIndices.add(game.currentNightIndex);
       cardWrapper.classList.add('flipped-mini');
       game.seerRevealedPlayers[clickedPlayer.id] = clickedPlayer.currentCard;
       game.logTimeline('seer', '預言家', clickedPlayer.currentCard, `查看了玩家 ${clickedPlayer.name} 的卡牌`);
@@ -1147,6 +1159,7 @@ function handleNightCardClick(activeRole, clickedPlayer, cardWrapper) {
 
     dom.btnNightConfirm.onclick = () => {
       nightActionConfirmed = true;
+      confirmedNightIndices.add(game.currentNightIndex);
       if (!robberPlayer) {
         console.error("Robber player not found!");
         return;
@@ -1189,6 +1202,7 @@ function handleNightCardClick(activeRole, clickedPlayer, cardWrapper) {
       dom.btnNightConfirm.classList.remove('disabled');
       dom.btnNightConfirm.onclick = () => {
         nightActionConfirmed = true;
+        confirmedNightIndices.add(game.currentNightIndex);
         const p1 = game.players.find(p => p.id === currentSelectedCards[0].id);
         const p2 = game.players.find(p => p.id === currentSelectedCards[1].id);
         const temp = p1.currentCard;
@@ -1234,6 +1248,7 @@ function handleNightCenterCardClick(activeRole, clickedIdx, cardWrapper) {
       dom.btnNightConfirm.classList.remove('disabled');
       dom.btnNightConfirm.onclick = () => {
         nightActionConfirmed = true;
+        confirmedNightIndices.add(game.currentNightIndex);
         const seerPlayer = game.players.find(p => p.id === myPlayerId && p.initialRole === 'seer') || game.players.find(p => p.initialRole === 'seer');
         const seerPlayerId = seerPlayer ? seerPlayer.id : myPlayerId;
         
@@ -1267,6 +1282,7 @@ function handleNightCenterCardClick(activeRole, clickedIdx, cardWrapper) {
 
     dom.btnNightConfirm.onclick = () => {
       nightActionConfirmed = true;
+      confirmedNightIndices.add(game.currentNightIndex);
       const drunkPlayer = game.players.find(p => p.id === myPlayerId && p.initialRole === 'drunk') || game.players.find(p => p.initialRole === 'drunk');
       const drunkPlayerId = drunkPlayer ? drunkPlayer.id : myPlayerId;
       if (!drunkPlayer) {
@@ -1300,6 +1316,7 @@ function handleNightCenterCardClick(activeRole, clickedIdx, cardWrapper) {
 
     dom.btnNightConfirm.onclick = () => {
       nightActionConfirmed = true;
+      confirmedNightIndices.add(game.currentNightIndex);
       cardWrapper.classList.add('flipped-mini');
       const cardRole = game.centerCards[clickedIdx];
       game.werewolfRevealedCenter[clickedIdx] = cardRole;
@@ -1892,9 +1909,19 @@ function renderDayPlayers() {
 
     let showRoleId = p.initialRole;
     if (isSelf) {
-      if (p.initialRole === 'insomniac' || p.initialRole === 'robber') {
+      if (p.initialRole === 'insomniac') {
+        // 失眠者是夜晚最後醒來，看到自己最新被對調的卡牌
         showRoleId = p.currentCard;
+      } else if (p.initialRole === 'robber') {
+        // 強盜看見自己「搶奪當時所拿到的新身份」，防範後續搗蛋鬼對其交換所產生的劇透
+        const robberTrace = game.timelineTrace.find(t => t.targetId === p.id && t.action.includes('搶奪了玩家'));
+        if (robberTrace) {
+          showRoleId = robberTrace.role; // 顯示搶奪當下拿到的牌
+        } else {
+          showRoleId = p.initialRole;
+        }
       } else {
+        // 其他所有角色（村民、預言家、酒鬼、狼人、皮皮鬼等）天亮只會看到初始身份，不因夜晚被交換而劇透
         showRoleId = p.initialRole;
       }
     }
@@ -2206,6 +2233,7 @@ function showResultScene(p2pResult = null) {
     if (game.mode === 'p2p') {
       if (p2p && p2p.isHost) {
         game.reset();
+        confirmedNightIndices.clear();
         p2p.send({ type: 'RESTART_GAME' });
         showScene(SCENES.LOBBY);
         renderLobbyPlayers();
