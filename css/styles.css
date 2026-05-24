@@ -591,6 +591,75 @@ body {
   color: white;
 }
 
+/* 超奢華 Hover Tooltip 說明面板 */
+.role-tooltip {
+  position: absolute;
+  bottom: 110%; /* 顯示在卡片上方 */
+  left: 50%;
+  transform: translateX(-50%) translateY(10px);
+  width: 220px;
+  background: rgba(15, 23, 42, 0.95);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 0.75rem;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 0 15px rgba(139, 92, 246, 0.15);
+  color: #e2e8f0;
+  text-align: left;
+  pointer-events: none; /* 防止滑鼠移入 tooltip 造成閃爍 */
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1), transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 100;
+}
+
+/* 小三角形箭頭 */
+.role-tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 6px;
+  border-style: solid;
+  border-color: rgba(15, 23, 42, 0.95) transparent transparent transparent;
+}
+
+.role-select-card:hover .role-tooltip {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(0);
+  border-color: var(--glow-cyan);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 0 20px rgba(6, 182, 212, 0.3);
+}
+
+.role-tooltip-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding-bottom: 4px;
+  margin-bottom: 6px;
+  font-size: 0.85rem;
+}
+
+.role-tooltip p {
+  font-size: 0.75rem;
+  line-height: 1.4;
+  color: #94a3b8;
+  margin: 0;
+}
+
+.role-tooltip-footer {
+  margin-top: 6px;
+  padding-top: 4px;
+  border-top: 1px dashed rgba(255, 255, 255, 0.06);
+  font-size: 0.65rem;
+  color: var(--glow-gold);
+  font-weight: 500;
+}
+
 /* P2P 面板 */
 .p2p-panel {
   background: rgba(6, 182, 212, 0.03);

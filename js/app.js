@@ -374,6 +374,17 @@ function renderLobbyRoles() {
       <h4>${role.name}</h4>
       <span>${role.team === TEAMS.WEREWOLF ? '狼人陣營' : role.team === TEAMS.TANNER ? '皮皮鬼' : '村民陣營'}</span>
       ${countInPool > 0 ? `<div class="role-count-badge">x${countInPool}</div>` : ''}
+      
+      <!-- 超奢華 Hover Tooltip 說明面板 -->
+      <div class="role-tooltip">
+        <div class="role-tooltip-header">
+          <span>${role.icon}</span> <strong style="color: #f8fafc; font-weight: 800;">${role.name}</strong>
+        </div>
+        <p>${role.description}</p>
+        <div class="role-tooltip-footer">
+          💤 夜晚順序: ${role.priority > 0 ? `第 ${role.priority} 醒來` : '無夜晚行動 (全程閉眼)'}
+        </div>
+      </div>
     `;
 
     card.onclick = () => {
