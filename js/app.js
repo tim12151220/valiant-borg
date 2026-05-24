@@ -495,6 +495,20 @@ function updateSetupCounts() {
    C. WebRTC P2P 連線模組串接
    ========================================================================== */
 
+function safeUpdatePlayers(newPlayers) {
+  if (!newPlayers || !Array.isArray(newPlayers)) return;
+  const backups = {};
+  game.players.forEach(p => {
+    backups[p.id] = p.privateNotes || {};
+  });
+
+  game.players = newPlayers;
+
+  game.players.forEach(p => {
+    p.privateNotes = backups[p.id] || p.privateNotes || {};
+  });
+}
+
 function initP2P() {
   if (p2p) return;
   p2p = new P2PManager((msg, conn) => {
@@ -561,13 +575,13 @@ function initP2P() {
       alert("⚠️ 你已被房主踢出房間！");
     } else if (msg.type === 'WELCOME_CLIENT') {
       myPlayerId = msg.clientId;
-      game.players = msg.players;
+      safeUpdatePlayers(msg.players);
       game.rolesPool = msg.rolesPool;
       renderLobbyPlayers();
       updateSetupCounts();
       renderLobbyRoles();
     } else if (msg.type === 'LOBBY_STATE') {
-      game.players = msg.players;
+      safeUpdatePlayers(msg.players);
       game.rolesPool = msg.rolesPool;
       renderLobbyPlayers();
       updateSetupCounts();
@@ -582,7 +596,7 @@ function initP2P() {
         }
       }
     } else if (msg.type === 'START_GAME') {
-      game.players = msg.players;
+      safeUpdatePlayers(msg.players);
       game.centerCards = msg.centerCards;
       game.centerCardsInitial = msg.centerCardsInitial;
       game.rolesPool = msg.rolesPool;
@@ -593,10 +607,10 @@ function initP2P() {
         handlePlayerReadyNight(msg.playerId);
       }
     } else if (msg.type === 'START_NIGHT') {
-      game.players = msg.players;
+      safeUpdatePlayers(msg.players);
       startNightScene();
     } else if (msg.type === 'NIGHT_PHASE') {
-      if (msg.players) game.players = msg.players;
+      if (msg.players) safeUpdatePlayers(msg.players);
       if (msg.centerCards) game.centerCards = msg.centerCards;
       handleNightPhaseSync(msg);
     } else if (msg.type === 'NIGHT_ACTION_UPDATE') {
@@ -653,7 +667,7 @@ function initP2P() {
         }
       }
     } else if (msg.type === 'START_DAY') {
-      game.players = msg.players;
+      safeUpdatePlayers(msg.players);
       game.centerCards = msg.centerCards;
       game.centerCardsInitial = msg.centerCardsInitial;
       game.timelineTrace = msg.timelineTrace;
@@ -671,7 +685,7 @@ function initP2P() {
         }
       }
     } else if (msg.type === 'SYNC_PUBLIC_CLAIMS') {
-      game.players = msg.players;
+      safeUpdatePlayers(msg.players);
       renderDayPlayers();
     } else if (msg.type === 'START_VOTING') {
       if (game.dayTimerId) clearInterval(game.dayTimerId);
@@ -681,7 +695,7 @@ function initP2P() {
         handlePlayerSubmitVote(msg.voterId, msg.targetId);
       }
     } else if (msg.type === 'SHOW_RESULT') {
-      game.players = msg.players;
+      safeUpdatePlayers(msg.players);
       showResultScene(msg.winnerResult);
     } else if (msg.type === 'RESTART_GAME') {
       game.reset();
