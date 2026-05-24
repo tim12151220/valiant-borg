@@ -615,30 +615,20 @@ function initP2P() {
       handleNightPhaseSync(msg);
     } else if (msg.type === 'NIGHT_ACTION_UPDATE') {
       if (p2p.isHost) {
-        // 1. 增量更新 players 的 currentCard，避免多人局 Client 交換結果被互相抹除覆寫
+        // 1. 同步最新真實的 players 卡牌與宣稱狀態，防止因增量比對漏洞導致「卡牌被換回初始身份後拒絕更新」的不同步 Bug
         if (msg.players && Array.isArray(msg.players)) {
           msg.players.forEach(clientPlayer => {
-            const hasChanged = clientPlayer.currentCard !== clientPlayer.initialRole;
-            // 只有當卡牌在該 Client 端確實發生變更，或是發送者本人（例如預言家查驗），Host 才同步其狀態
-            if (hasChanged || clientPlayer.id === msg.playerId) {
-              const hostPlayer = game.players.find(p => p.id === clientPlayer.id);
-              if (hostPlayer) {
-                hostPlayer.currentCard = clientPlayer.currentCard;
-                hostPlayer.publicClaim = clientPlayer.publicClaim;
-                hostPlayer.privateNotes = clientPlayer.privateNotes;
-              }
+            const hostPlayer = game.players.find(p => p.id === clientPlayer.id);
+            if (hostPlayer) {
+              hostPlayer.currentCard = clientPlayer.currentCard;
+              hostPlayer.publicClaim = clientPlayer.publicClaim;
             }
           });
         }
 
-        // 2. 增量更新 centerCards 底牌（例如酒鬼與底牌交換）
-        if (msg.centerCards && Array.isArray(msg.centerCards) && game.centerCardsInitial) {
-          msg.centerCards.forEach((clientRole, idx) => {
-            const initialRole = game.centerCardsInitial[idx];
-            if (clientRole !== initialRole) {
-              game.centerCards[idx] = clientRole;
-            }
-          });
+        // 2. 同步最新真實的 centerCards 底牌（例如酒鬼與底牌交換結果）
+        if (msg.centerCards && Array.isArray(msg.centerCards)) {
+          game.centerCards = [...msg.centerCards];
         }
 
         // 3. 智能合併歷史軌跡 timelineTrace，防止後續角色行動時覆寫抹除前面角色的軌跡
