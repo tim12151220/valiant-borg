@@ -38,18 +38,28 @@ export class P2PManager {
    */
   async loadPeerJS() {
     if (window.Peer) return true;
-    return new Promise((resolve, reject) => {
-      const script = document.createElement('script');
-      script.src = 'https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js';
-      script.onload = () => {
-        console.log("PeerJS loaded successfully.");
-        resolve(true);
-      };
-      script.onerror = () => {
-        reject(new Error("Failed to load PeerJS library."));
-      };
-      document.head.appendChild(script);
-    });
+    const cdns = [
+      'https://cdn.jsdelivr.net/npm/peerjs@1.5.2/dist/peerjs.min.js',
+      'https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.2/peerjs.min.js',
+      'https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js'
+    ];
+
+    for (let i = 0; i < cdns.length; i++) {
+      try {
+        await new Promise((resolve, reject) => {
+          const script = document.createElement('script');
+          script.src = cdns[i];
+          script.onload = () => resolve(true);
+          script.onerror = () => reject(new Error(`Failed to load CDN: ${cdns[i]}`));
+          document.head.appendChild(script);
+        });
+        console.log(`PeerJS loaded successfully from CDN: ${cdns[i]}`);
+        return true;
+      } catch (e) {
+        console.warn(e.message);
+      }
+    }
+    throw new Error("所有 PeerJS CDN 均載入失敗，請檢查網路連線！");
   }
 
   /**
@@ -77,7 +87,11 @@ export class P2PManager {
 
       this.peer.on('error', (err) => {
         console.error("PeerJS error:", err);
-        this.logStatus(`錯誤：${err.type || '連線失敗'}`);
+        let tip = `錯誤：${err.type || '建立房間失敗'}`;
+        if (err.type === 'network' || err.type === 'server-error' || err.type === 'socket-error') {
+          tip = "⚠️ 信令伺服器連線超時/失敗！請檢查您的網路，或嘗試切換手機 4G/5G 熱點，並重新整理網頁再試。";
+        }
+        this.logStatus(tip);
       });
 
     } catch (e) {
@@ -108,7 +122,15 @@ export class P2PManager {
 
       this.peer.on('error', (err) => {
         console.error("PeerJS error:", err);
-        this.logStatus(`連線錯誤：${err.message}`);
+        let tip = `連線錯誤：${err.message || '連線失敗'}`;
+        if (err.type === 'network' || err.type === 'server-error' || err.type === 'socket-error') {
+          tip = "⚠️ 信令伺服器連線超時！請檢查網路，嘗試切換手機 4G/5G 網路，並重新整理網頁再試。";
+        } else if (err.type === 'peer-unavailable') {
+          tip = "⚠️ 找不到該房間 ID！請確認您的房號是否輸入正確（大小寫需完全一致）。";
+        } else if (err.type === 'webrtc') {
+          tip = "⚠️ P2P 連線建立失敗！可能是雙方皆處於嚴格對稱 NAT 防火牆後方，請嘗試改由另一人創建房間（更換房主）！";
+        }
+        this.logStatus(tip);
       });
 
     } catch (e) {

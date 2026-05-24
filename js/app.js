@@ -488,6 +488,12 @@ function initP2P() {
   p2p = new P2PManager((msg, conn) => {
     if (msg.type === 'JOIN_LOBBY') {
       if (p2p.isHost && game.players.length < 10) {
+        // [防重複/防卡死] 若已有名稱相同的玩家，先移除
+        const existingPlayer = game.players.find(p => p.name === msg.playerName);
+        if (existingPlayer) {
+          game.removePlayer(existingPlayer.id);
+        }
+
         game.addPlayer(msg.playerName, false);
         const newPlayer = game.players[game.players.length - 1];
         conn.assignedPlayerId = newPlayer.id;
@@ -512,6 +518,27 @@ function initP2P() {
             });
           }
         });
+      }
+    } else if (msg.type === 'PLAYER_SPEECH') {
+      if (p2p.isHost) {
+        const sender = game.players.find(p => p.id === msg.senderId);
+        const senderName = sender ? sender.name : "未知玩家";
+        addChatMessage(senderName, msg.text, 'user-speech');
+        
+        // Host 轉發廣播給除了發送者以外的所有 Clients
+        p2p.connections.forEach(c => {
+          if (c !== conn && c.open) {
+            c.send({
+              type: 'BROADCAST_SPEECH',
+              senderName: senderName,
+              text: msg.text
+            });
+          }
+        });
+      }
+    } else if (msg.type === 'BROADCAST_SPEECH') {
+      if (!p2p.isHost) {
+        addChatMessage(msg.senderName, msg.text, 'user-speech');
       }
     } else if (msg.type === 'KICKED') {
       p2p.disconnect();
@@ -1306,6 +1333,11 @@ function startDayScene() {
     if (game.dayTimeLeft <= 0) {
       clearInterval(game.dayTimerId);
       startVotingScene();
+      
+      // 如果是 Host，討論超時通知所有人進入投票
+      if (game.mode === 'p2p' && p2p.isHost) {
+        p2p.send({ type: 'START_VOTING' });
+      }
     }
   }, 1000);
 
@@ -1317,21 +1349,83 @@ function startDayScene() {
   // 1.5 渲染並顯示本機玩家夜間查驗與行動專用提示橫幅
   renderDaytimeActionHintBanner();
 
+  // 1.6 渲染本局的角色配置池一覽，方便大家在討論時隨時回看配置
+  const rolesPoolList = document.getElementById('day-roles-pool-list');
+  if (rolesPoolList) {
+    rolesPoolList.innerHTML = "";
+    const counts = {};
+    game.rolesPool.forEach(id => {
+      counts[id] = (counts[id] || 0) + 1;
+    });
+
+    Object.keys(counts).sort().forEach(id => {
+      const r = ROLES[Object.keys(ROLES).find(k => ROLES[k].id === id)];
+      if (r) {
+        const badge = document.createElement('div');
+        badge.style.display = "flex";
+        badge.style.alignItems = "center";
+        badge.style.gap = "6px";
+        badge.style.padding = "4px 10px";
+        badge.style.background = "rgba(255, 255, 255, 0.03)";
+        badge.style.border = `1.5px solid ${r.bgGlow}`;
+        badge.style.borderRadius = "20px";
+        badge.style.fontSize = "0.75rem";
+        badge.style.color = "#cbd5e1";
+        badge.style.boxShadow = `0 0 8px ${r.bgGlow}33`;
+        badge.style.fontFamily = "var(--font-tech)";
+        badge.innerHTML = `<span>${r.icon}</span> <strong style="color:#f8fafc; font-weight:800;">${r.name}</strong> <span style="background:rgba(255,255,255,0.08); border-radius:50%; width:16px; height:16px; display:inline-flex; align-items:center; justify-content:center; font-size:0.65rem; font-weight:bold;">${counts[id]}</span>`;
+        rolesPoolList.appendChild(badge);
+      }
+    });
+  }
+
   // 2. 清空發言牆
   dom.discussionChatLog.innerHTML = `<div class="chat-msg system">☀️ 天亮了，討論開始！請大家發揮邏輯與口才，自由展開討論與推理...</div>`;
 
-  // 發言輸入
+  // 發言輸入與 P2P 廣播實時同步
   dom.btnSendSpeech.onclick = () => {
     const val = dom.inputDaySpeech.value.trim();
     if (!val) return;
-    addChatMessage(game.players[0].name, val, 'user-speech');
+    
+    const mySelf = game.players.find(p => p.id === myPlayerId) || game.players[0];
+    const myName = mySelf.name;
+    
+    addChatMessage(myName, val, 'user-speech');
     dom.inputDaySpeech.value = "";
+
+    if (game.mode === 'p2p') {
+      if (p2p.isHost) {
+        // Host 直接廣播給所有 Clients
+        p2p.send({
+          type: 'BROADCAST_SPEECH',
+          senderName: myName,
+          text: val
+        });
+      } else {
+        // Client 發送給 Host 請求中轉
+        p2p.send({
+          type: 'PLAYER_SPEECH',
+          senderId: myPlayerId,
+          text: val
+        });
+      }
+    }
   };
 
   dom.btnForceVote.onclick = () => {
     if (game.dayTimerId) clearInterval(game.dayTimerId);
     startVotingScene();
+    
+    // 如果是 Host，提前結束討論，廣播 START_VOTING 通知所有人進入投票
+    if (game.mode === 'p2p' && p2p.isHost) {
+      p2p.send({ type: 'START_VOTING' });
+    }
   };
+
+  // 3. 觸發 AI 討論發言（若有 AI 玩家在場）
+  if (game.players.some(p => p.isAI)) {
+    triggerAISpeeches();
+  }
 }
 
 function renderDaytimeActionHintBanner() {

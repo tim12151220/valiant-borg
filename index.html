@@ -205,6 +205,16 @@
         <div class="day-layout">
           <!-- 玩家卡牌展示區（白天只有自己是卡面，其他人都是卡背，除非有能力看過） -->
           <div class="board-col main-table">
+            <!-- 本局角色配置池 -->
+            <div class="roles-pool-showcase" style="margin-bottom: 20px; padding: 12px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; box-shadow: 0 0 10px rgba(0,0,0,0.2);">
+              <h4 style="margin: 0 0 8px 0; font-size: 0.85rem; color: #94a3b8; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; display: flex; align-items: center; gap: 6px;">
+                🔮 本局配置角色池一覽 (Roles Pool)
+              </h4>
+              <div id="day-roles-pool-list" style="display: flex; flex-wrap: wrap; gap: 8px;">
+                <!-- 動態生成本局角色小標籤 -->
+              </div>
+            </div>
+
             <h3>👥 存活玩家 (以新身份結算)</h3>
             <div class="players-display-grid" id="day-players-grid">
               <!-- 動態填充玩家項目 -->
