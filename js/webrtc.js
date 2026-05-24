@@ -2,6 +2,26 @@
    《一夜終極狼人殺》- WebRTC P2P 房間連線邏輯 (js/webrtc.js)
    ========================================================================== */
 
+const ICE_CONFIG = {
+  config: {
+    iceServers: [
+      // 穩定的全球 STUN 伺服器群
+      { urls: 'stun:stun.l.google.com:19302' },
+      { urls: 'stun:global.stun.twilio.com:3478?transport=udp' },
+      { urls: 'stun:stun.cloudflare.com:3478' },
+      // 免費且高穿透力的公共 TURN (Relay) 中繼伺服器，解決對稱型 NAT 與學校/公司嚴格防火牆限制
+      {
+        urls: [
+          'turn:relay.metered.ca:80',
+          'turn:relay.metered.ca:443?transport=tcp'
+        ],
+        username: 'metered',
+        credential: 'metered'
+      }
+    ]
+  }
+};
+
 export class P2PManager {
   constructor(onMessageCallback, onStatusCallback) {
     this.peer = null;
@@ -41,8 +61,8 @@ export class P2PManager {
       this.isHost = true;
       this.logStatus("正在向訊號伺服器請求房間 ID...");
 
-      // 建立 Peer
-      this.peer = new window.Peer();
+      // 建立 Peer (傳入高穿透性 ICE 伺服器配置)
+      this.peer = new window.Peer(ICE_CONFIG);
 
       this.peer.on('open', (id) => {
         this.roomId = id;
@@ -77,7 +97,8 @@ export class P2PManager {
       this.playerName = myName || '遠端玩家';
       this.logStatus("正在嘗試連線到房間...");
 
-      this.peer = new window.Peer();
+      // 建立 Peer (傳入高穿透性 ICE 伺服器配置)
+      this.peer = new window.Peer(ICE_CONFIG);
 
       this.peer.on('open', (id) => {
         this.logStatus(`已連接訊號伺服器，正撥號給：${targetRoomId}`);
