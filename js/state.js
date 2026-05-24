@@ -32,6 +32,13 @@ export class GameState {
     this.dayTimerId = null;
     this.dayTimeLeft = 180; // 白天討論 3 分鐘
     this.timelineTrace = []; // 紀錄所有卡牌移動軌跡
+    
+    // 預言家查驗紀錄
+    this.seerRevealedPlayers = {}; // { playerId: roleId }
+    this.seerRevealedCenter = {};  // { centerCardIdx: roleId }
+
+    // 單狼查驗底牌紀錄
+    this.werewolfRevealedCenter = {}; // { centerCardIdx: roleId }
   }
 
   /**
@@ -42,6 +49,7 @@ export class GameState {
       p.initialRole = null;
       p.currentCard = null;
       p.voteFor = null;
+      p.isReadyForNight = false; // 徹底重設準備夜晚狀態，防止第二局卡死或強行進天黑
       this.dayTimeLeft = 180;
       p.speech = "";
       p.publicClaim = null; // 宣稱身份
@@ -51,6 +59,9 @@ export class GameState {
     this.centerCardsInitial = [];
     this.timelineTrace = [];
     this.currentNightIndex = -1;
+    this.seerRevealedPlayers = {};
+    this.seerRevealedCenter = {};
+    this.werewolfRevealedCenter = {};
     if (this.dayTimerId) {
       clearInterval(this.dayTimerId);
       this.dayTimerId = null;
@@ -61,7 +72,7 @@ export class GameState {
    * 新增玩家
    */
   addPlayer(name, isAI = false, aiPersonality = 'normal') {
-    const id = 'p_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+    const id = 'p_' + Date.now() + '_' + Math.floor(Math.random() * 1000000) + '_' + this.players.length;
     this.players.push({
       id,
       name,
@@ -152,26 +163,75 @@ export class GameState {
     const currentRole = this.nightOrder[this.currentNightIndex];
     console.log(`[Night Machine] Priority ${currentRole.priority}: ${currentRole.name}`);
 
+    // 本夜晚階段已確認玩家 ID 集合
+    this.nightConfirmedPlayerIds = new Set();
+
     // 檢查這個角色是否真的在場上玩家的手中
     const isInPlay = this.players.some(p => p.initialRole === currentRole.id);
     const activePlayer = this.players.find(p => p.initialRole === currentRole.id);
+    const isRealPlayer = isInPlay && activePlayer && !activePlayer.isAI;
+
+    // 是否有真人玩家（本機或遠端）控制此角色
+    const isRealPlayerInPlay = isInPlay && activePlayer && !activePlayer.isAI;
+
+    // 定義本夜晚行動結束的閉眼並前進的回呼
+    const proceedToNext = () => {
+      this.nextNightPhase(onSceneChange, onNightRoleWake, onNightFinished);
+    };
+
+    // 保存回呼給全域調用，支援多重真人角色（如雙狼/雙守墓人）全員相認確認後再前進
+    this.finishActiveNightAction = (confirmedPlayerId) => {
+      if (confirmedPlayerId) {
+        this.nightConfirmedPlayerIds.add(confirmedPlayerId);
+      }
+
+      // 取得當前角色在場上的所有真人玩家（本機 + 遠端）
+      const activeRealPlayers = this.players.filter(p => p.initialRole === currentRole.id && !p.isAI);
+      
+      // 若還有真人玩家未確認，則 Host 繼續在遮罩後安靜等待，不推進
+      const allConfirmed = activeRealPlayers.every(p => this.nightConfirmedPlayerIds.has(p.id));
+      if (activeRealPlayers.length > 0 && !allConfirmed) {
+        console.log(`[Night Machine] ${currentRole.name} action: ${this.nightConfirmedPlayerIds.size}/${activeRealPlayers.length} players confirmed. Waiting...`);
+        return;
+      }
+
+      // 所有人皆確認，播放閉眼語音，並在 300ms 後直接推進至下一階段（不被語音播畢阻塞）
+      const sleepText = `${currentRole.name}，請閉眼。`;
+      tts.speak(sleepText); // 異步背景播放
+      setTimeout(() => {
+        proceedToNext();
+      }, 300);
+    };
 
     // 觸發 TTS 語音旁白引導
-    tts.speakNightPhase(currentRole, isInPlay, () => {
+    tts.speakNightPhase(currentRole, isInPlay, isRealPlayer, () => {
       // 睜眼回呼 (若為在場玩家且非 AI，解開閉眼大遮罩，允許操作)
-      if (isInPlay && activePlayer && !activePlayer.isAI) {
+      if (isRealPlayer) {
         onNightRoleWake(currentRole, activePlayer, false); // 真人玩家醒來操作
       } else if (isInPlay && activePlayer && activePlayer.isAI) {
         // AI 玩家醒來：由程式自動執行行動
         AIEngine.executeNightAction(activePlayer, this.players, this.centerCards);
         onNightRoleWake(currentRole, activePlayer, true); // AI 玩家，純展示
+        
+        // AI 醒來給 800ms 展示時間後自動閉眼進入下一階段
+        setTimeout(() => {
+          this.finishActiveNightAction();
+        }, 800);
       } else {
-        // 該角色不在場上 (在底牌中)：純模擬等待
+        // 該角色不在場上 (在底牌中)，或是這是一個遠端真人玩家控制的角色
         onNightRoleWake(currentRole, null, true);
+        
+        // 關鍵：如果這是一個遠端真人玩家控制的角色，Host 必須在後台安靜等待，絕不能啟動 setTimeout 自動跳過！
+        if (isRealPlayerInPlay) {
+          console.log(`[Night Machine] Waiting for remote player ${activePlayer.name} to confirm ${currentRole.name} action...`);
+        } else {
+          // 對於不在場角色，模擬隨機 0.5 - 1.0 秒後自動閉眼進入下一階段，大幅降低等待時間
+          const delay = Math.random() * 500 + 500;
+          setTimeout(() => {
+            this.finishActiveNightAction();
+          }, delay);
+        }
       }
-    }, () => {
-      // 行動結束閉眼回呼：進入下一位夜晚優先級角色
-      this.nextNightPhase(onSceneChange, onNightRoleWake, onNightFinished);
     });
   }
 
@@ -195,15 +255,29 @@ export class GameState {
       }
     });
 
-    // 找出所有得最高票的玩家（平手時全部死亡）
+    // 找出所有得最高票的選項
+    let maxVoteTargets = [];
+    if (maxVotes > 0) {
+      maxVoteTargets = Object.keys(voteCounts).filter(id => voteCounts[id] === maxVotes);
+    }
+
     let deadPlayers = [];
-    if (maxVotes > 1) { // 至少要 2 票或以上才會有人死亡 (如果所有人均為 1 票，則無人死亡)
-      deadPlayers = this.players.filter(p => voteCounts[p.id] === maxVotes);
+    let noWerewolfVotedWinner = false; // 是否成功投出「場上無狼人」
+
+    if (maxVotes > 1) {
+      // 如果唯一的最高票是 "no_werewolves"
+      if (maxVoteTargets.length === 1 && maxVoteTargets[0] === 'no_werewolves') {
+        noWerewolfVotedWinner = true;
+      } else {
+        // 最高票有玩家（平手時這些玩家均死亡，排除 "no_werewolves"）
+        const deadPlayerIds = maxVoteTargets.filter(id => id !== 'no_werewolves');
+        deadPlayers = this.players.filter(p => deadPlayerIds.includes(p.id));
+      }
     }
 
     // 2. 處理「獵人死亡開槍連鎖反應」
     const hunterDead = deadPlayers.find(p => p.currentCard === 'hunter');
-    if (hunterDead && hunterDead.voteFor) {
+    if (hunterDead && hunterDead.voteFor && hunterDead.voteFor !== 'no_werewolves') {
       const hunterTarget = this.players.find(p => p.id === hunterDead.voteFor);
       if (hunterTarget && !deadPlayers.some(p => p.id === hunterTarget.id)) {
         deadPlayers.push(hunterTarget); // 獵人開槍帶走投票對象
@@ -226,6 +300,15 @@ export class GameState {
       // 皮皮鬼死亡 -> 皮皮鬼單獨獲勝！
       winningTeam = '皮皮鬼';
       summaryText = `最厭世的「皮皮鬼」成功被大家投死了！他單獨獲得遊戲勝利！`;
+    } else if (noWerewolfVotedWinner) {
+      // 成功投出「沒有狼人」
+      if (!isWerewolfInPlay) {
+        winningTeam = '村民陣營';
+        summaryText = `大家成功投票判定「場上沒有狼人」（全在底牌中），村民大獲全勝！`;
+      } else {
+        winningTeam = '狼人陣營';
+        summaryText = `大家投票判定「場上沒有狼人」，但實際上場上有狼人隱藏！狼人陣營大獲全勝！`;
+      }
     } else if (isWerewolfInPlay) {
       // 場上有狼人
       if (hasWerewolfDead) {
@@ -236,7 +319,7 @@ export class GameState {
         summaryText = `死者中沒有任何一隻狼人（死者：${deadPlayers.length > 0 ? deadPlayers.map(p => p.name).join(', ') : '無人死亡'}），狼人成功潛伏！`;
       }
     } else {
-      // 場上無狼人（無狼局，狼人都在底牌）
+      // 場上無狼人（無狼局，且沒有人是唯一最高票投「無狼人」）
       if (deadPlayers.length === 0) {
         winningTeam = '村民陣營';
         summaryText = `場上其實沒有狼人（全在底牌中），大家默契投票無人死亡，村民大獲全勝！`;

@@ -50,8 +50,8 @@ class TTSController {
     this.cancel();
     
     if (!this.enabled || !this.synth) {
-      // 若語音關閉，使用模擬延遲代表朗讀時間
-      const delay = Math.max(2000, text.length * 150);
+      // 若語音關閉，使用更短的模擬延遲，加快無語音環境下的遊戲推進速度
+      const delay = Math.max(800, text.length * 60);
       setTimeout(() => {
         if (onEnd) onEnd();
       }, delay);
@@ -65,13 +65,33 @@ class TTSController {
     utterance.rate = this.rate;
     utterance.pitch = this.pitch;
     
+    let hasEnded = false;
+    // 設定安全保護超時 (每個字給 400ms，最低 4 秒，最高 12 秒)
+    const timeoutDuration = Math.min(12000, Math.max(4000, text.length * 400));
+    const safetyTimeout = setTimeout(() => {
+      if (!hasEnded) {
+        console.warn("TTS speak safety timeout triggered for:", text.substring(0, 15));
+        hasEnded = true;
+        this.cancel(); // 取消掛起的播放
+        if (onEnd) onEnd();
+      }
+    }, timeoutDuration);
+
     utterance.onend = () => {
-      if (onEnd) onEnd();
+      if (!hasEnded) {
+        clearTimeout(safetyTimeout);
+        hasEnded = true;
+        if (onEnd) onEnd();
+      }
     };
 
     utterance.onerror = (e) => {
       console.warn("TTS speak error:", e);
-      if (onEnd) onEnd();
+      if (!hasEnded) {
+        clearTimeout(safetyTimeout);
+        hasEnded = true;
+        if (onEnd) onEnd();
+      }
     };
 
     this.synth.speak(utterance);
@@ -84,7 +104,7 @@ class TTSController {
    * @param {function} onActionStart - 睜眼並允許操作的回呼
    * @param {function} onActionEnd - 行動結束、閉眼並轉向下一階段的回呼
    */
-  speakNightPhase(role, isInPlay, onActionStart, onActionEnd) {
+  speakNightPhase(role, isInPlay, isRealPlayer, onActionStart) {
     const roleName = role.name;
     const wakeText = `${roleName}，請睜眼。`;
     let instructionText = "";
@@ -108,28 +128,12 @@ class TTSController {
       instructionText = "失眠者，請查看你面前的牌，確認你目前的身份。";
     }
 
-    const sleepText = `${roleName}，請閉眼。`;
-
     // 1. 播報「XX請睜眼...行動說明」
     this.speak(`${wakeText} ${instructionText}`, () => {
       // 2. 觸發前台操作顯示
       if (onActionStart) {
         onActionStart();
       }
-
-      // 3. 設定等待時間供玩家操作或模擬空檔
-      // 如果角色不在場上，則系統模擬隨機 5-9 秒的空檔
-      const delayTime = isInPlay ? 12000 : (Math.random() * 4000 + 5000); // 在場玩家給 12 秒操作，不在場模擬 5-9 秒
-
-      setTimeout(() => {
-        // 4. 播報「XX請閉眼」
-        this.speak(sleepText, () => {
-          // 隨便延遲 1 秒，轉向下一位
-          setTimeout(() => {
-            if (onActionEnd) onActionEnd();
-          }, 1000);
-        });
-      }, delayTime);
     });
   }
 }

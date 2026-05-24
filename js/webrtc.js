@@ -118,7 +118,7 @@ export class P2PManager {
 
     conn.on('close', () => {
       this.logStatus("連線已中斷。");
-      if (this.onStatus) this.onStatus('disconnected', conn.peer);
+      if (this.onStatus) this.onStatus('disconnected', conn.peer, conn);
       this.connections = this.connections.filter(c => c.peer !== conn.peer);
     });
   }

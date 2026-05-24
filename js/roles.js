@@ -25,7 +25,7 @@ export const ROLES = {
     team: TEAMS.WEREWOLF,
     priority: 2,
     icon: '👁️‍🗨️',
-    img: 'assets/card_back.png', // 備用
+    img: 'assets/minion.png',
     bgGlow: 'var(--glow-orange)',
     description: '夜晚睜眼查看誰是狼人。如果爪牙死而狼人沒死，狼人依然獲勝。'
   },
@@ -35,7 +35,7 @@ export const ROLES = {
     team: TEAMS.VILLAGER,
     priority: 3,
     icon: '🛡️',
-    img: 'assets/card_back.png',
+    img: 'assets/mason.png',
     bgGlow: 'var(--glow-blue)',
     description: '與另一位守墓人同時睜眼，互相確認身份。'
   },
@@ -75,7 +75,7 @@ export const ROLES = {
     team: TEAMS.VILLAGER,
     priority: 7,
     icon: '🍺',
-    img: 'assets/card_back.png',
+    img: 'assets/drunk.png',
     bgGlow: 'var(--glow-gold)',
     description: '強行把自己的牌與一張底牌交換，但自己不能看換到了什麼。'
   },
@@ -85,7 +85,7 @@ export const ROLES = {
     team: TEAMS.VILLAGER,
     priority: 8,
     icon: '⏰',
-    img: 'assets/card_back.png',
+    img: 'assets/insomniac.png',
     bgGlow: 'var(--glow-ruby)',
     description: '在夜晚的最後醒來，確認自己目前的卡牌是否被換走。'
   },
@@ -95,7 +95,7 @@ export const ROLES = {
     team: TEAMS.VILLAGER,
     priority: 0, // 無夜晚行動
     icon: '🧑‍🌾',
-    img: 'assets/card_back.png',
+    img: 'assets/villager.png',
     bgGlow: 'rgba(255, 255, 255, 0.2)',
     description: '無夜晚行動的純村民，增加推理與扮演難度。'
   },
@@ -105,7 +105,7 @@ export const ROLES = {
     team: TEAMS.VILLAGER,
     priority: 0, // 無夜晚行動
     icon: '🏹',
-    img: 'assets/card_back.png',
+    img: 'assets/hunter.png',
     bgGlow: 'var(--glow-orange)',
     description: '無夜晚行動。被投死時，他投票的人也會跟著一同死亡。'
   },
@@ -115,7 +115,7 @@ export const ROLES = {
     team: TEAMS.TANNER,
     priority: 0, // 無夜晚行動
     icon: '🤡',
-    img: 'assets/card_back.png',
+    img: 'assets/tanner.png',
     bgGlow: 'rgba(255, 255, 255, 0.4)',
     description: '無夜晚行動。最厭世的人，唯一目標是讓自己被投死。被投死時單獨獲勝！'
   }

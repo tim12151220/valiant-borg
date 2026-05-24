@@ -55,13 +55,6 @@
               <p>實體聚會傳閱模式（單機多人）</p>
             </div>
           </button>
-          <button id="btn-mode-ai" class="mode-btn">
-            <span class="mode-icon">🤖</span>
-            <div class="mode-info">
-              <h3>AI Sandbox</h3>
-              <p>智慧 AI 模擬對決（單人練習）</p>
-            </div>
-          </button>
           <button id="btn-mode-p2p" class="mode-btn">
             <span class="mode-icon">⚡</span>
             <div class="mode-info">
@@ -272,6 +265,7 @@
         <div class="death-list-card" id="death-list-card">
           <h3>💀 死亡玩家：</h3>
           <div class="death-names" id="death-names-list">無人死亡</div>
+          <div id="vote-details-list" style="margin-top: 15px; font-size: 0.9rem; border-top: 1px dashed rgba(255,255,255,0.15); padding-top: 12px; color: #cbd5e1; text-align: left;"></div>
         </div>
 
         <!-- 卡牌軌跡演變圖 (Role Timeline Trace) -->
@@ -318,6 +312,7 @@
         <h5>除錯捷徑</h5>
         <button id="btn-debug-cheat" class="btn btn-secondary btn-sm">全場翻開身份</button>
         <button id="btn-debug-random-setup" class="btn btn-secondary btn-sm">隨機填入測試資料</button>
+        <button id="btn-debug-run-tests" class="btn btn-secondary btn-sm" style="background: linear-gradient(135deg, var(--glow-cyan), var(--glow-blue)); border:none; color:black; font-weight:bold; box-shadow:0 0 10px var(--glow-cyan);">🧪 執行 1000局邏輯壓測</button>
       </div>
     </div>
   </aside>
