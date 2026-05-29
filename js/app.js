@@ -514,8 +514,8 @@ function initP2P() {
   p2p = new P2PManager((msg, conn) => {
     if (msg.type === 'JOIN_LOBBY') {
       if (p2p.isHost && game.players.length < 10) {
-        // [防重複/防卡死] 若已有名稱相同的玩家，先移除
-        const existingPlayer = game.players.find(p => p.name === msg.playerName);
+        // [防重複/防卡死] 若已有名稱相同的玩家（且不是房主自己），先移除
+        const existingPlayer = game.players.find(p => p.name === msg.playerName && p.id !== myPlayerId);
         if (existingPlayer) {
           game.removePlayer(existingPlayer.id);
         }
@@ -805,7 +805,19 @@ function triggerNextPlayerDealPeek() {
   if (innerTarotCard) innerTarotCard.classList.remove('flipped');
 
   if (game.mode === 'p2p') {
-    const currentPlayer = game.players.find(p => p.id === myPlayerId);
+    let currentPlayer = game.players.find(p => p.id === myPlayerId);
+    if (!currentPlayer && p2p) {
+      // 終極容錯救援：若 UUID 因 P2P 重新撥號而對不上，嘗試使用本機玩家的「名稱」進行二次尋找
+      const myName = p2p.isHost ? (game.players[0] ? game.players[0].name : null) : p2p.playerName;
+      if (myName) {
+        currentPlayer = game.players.find(p => p.name === myName);
+        if (currentPlayer) {
+          myPlayerId = currentPlayer.id; // 自動校正為最新 UUID
+          console.warn(`[P2P Fallback] 透過名稱 ${myName} 救援成功，同步更新 myPlayerId 為 ${myPlayerId}`);
+        }
+      }
+    }
+
     if (!currentPlayer) {
       dom.dealPromptText.innerHTML = `系統錯誤：未找到你的玩家資料。`;
       return;
