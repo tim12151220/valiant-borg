@@ -116,6 +116,13 @@ export class P2PManager {
 
       let connectionTimer = null;
 
+      // 重要：Client 也必須監聽進來的連線請求！當房主發起「反向呼叫」時，Client 才能正確接收並建立 P2P 通道
+      this.peer.on('connection', (conn) => {
+        this.logStatus(`接收到房主的反向呼叫連線！正在接聽...`);
+        if (connectionTimer) clearTimeout(connectionTimer);
+        this.setupConnection(conn);
+      });
+
       this.peer.on('open', (id) => {
         this.logStatus(`已連接信令伺服器。您的臨時 Peer ID：${id}。正在撥號給房主：${targetRoomId}...`);
         if (this.onStatus) this.onStatus('client-peer-id', id);
