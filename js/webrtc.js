@@ -5,18 +5,32 @@
 const ICE_CONFIG = {
   config: {
     iceServers: [
-      // 穩定的全球 STUN 伺服器群
+      // 1. 保留原本穩定的全球公共 STUN 伺服器群（負責幫一般網路環境打洞）
       { urls: 'stun:stun.l.google.com:19302' },
       { urls: 'stun:global.stun.twilio.com:3478' },
       { urls: 'stun:stun.cloudflare.com:3478' },
-      // 免費且高穿透力的公共 TURN (Relay) 中繼伺服器，解決對稱型 NAT 與學校/公司嚴格防火牆限制
+      { urls: 'stun:stun.relay.metered.ca:80' }, // Metered 提供的額外 STUN
+
+      // 2. 填入你專屬的 Metered TURN 中繼伺服器群（負責在打洞失敗時強制中繼流量）
       {
-        urls: [
-          'turn:relay.metered.ca:80',
-          'turn:relay.metered.ca:443?transport=tcp'
-        ],
-        username: 'metered',
-        credential: 'metered'
+        urls: "turn:global.relay.metered.ca:80",
+        username: "faa72918a37f9ced0b56c5d7",
+        credential: "ntqgqGL/72vNdnM1",
+      },
+      {
+        urls: "turn:global.relay.metered.ca:80?transport=tcp",
+        username: "faa72918a37f9ced0b56c5d7",
+        credential: "ntqgqGL/72vNdnM1",
+      },
+      {
+        urls: "turn:global.relay.metered.ca:443",
+        username: "faa72918a37f9ced0b56c5d7",
+        credential: "ntqgqGL/72vNdnM1",
+      },
+      {
+        urls: "turns:global.relay.metered.ca:443?transport=tcp",
+        username: "faa72918a37f9ced0b56c5d7",
+        credential: "ntqgqGL/72vNdnM1",
       }
     ]
   }
