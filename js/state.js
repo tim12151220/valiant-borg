@@ -225,8 +225,8 @@ export class GameState {
         if (isRealPlayerInPlay) {
           console.log(`[Night Machine] Waiting for remote player ${activePlayer.name} to confirm ${currentRole.name} action...`);
         } else {
-          // 對於不在場角色，模擬隨機 0.5 - 1.0 秒後自動閉眼進入下一階段，大幅降低等待時間
-          const delay = Math.random() * 500 + 500;
+          // 對於不在場角色（在底牌中），為防範玩家猜出身份分佈，模擬 10 秒等待時間以維護面玩隱蔽性
+          const delay = 10000;
           setTimeout(() => {
             this.finishActiveNightAction();
           }, delay);
