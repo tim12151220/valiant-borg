@@ -71,8 +71,11 @@ export class P2PManager {
       this.isHost = true;
       this.logStatus("正在向訊號伺服器請求房間 ID...");
 
-      // 建立 Peer (傳入高穿透性 ICE 伺服器配置)
-      this.peer = new window.Peer(ICE_CONFIG);
+      // 建立 Peer (傳入高穿透性 ICE 伺服器配置與跨國高延遲優化)
+      this.peer = new window.Peer({
+        ...ICE_CONFIG,
+        pingInterval: 5000 // 縮短心跳間隔以維持高延遲跨國連線的活躍
+      });
 
       this.peer.on('open', (id) => {
         this.roomId = id;
@@ -111,8 +114,11 @@ export class P2PManager {
       this.playerName = myName || '遠端玩家';
       this.logStatus("正在嘗試連線到房間...");
 
-      // 建立 Peer (傳入高穿透性 ICE 伺服器配置)
-      this.peer = new window.Peer(ICE_CONFIG);
+      // 建立 Peer (傳入高穿透性 ICE 伺服器配置與跨國高延遲優化)
+      this.peer = new window.Peer({
+        ...ICE_CONFIG,
+        pingInterval: 5000 // 縮短心跳間隔以維持高延遲跨國連線的活躍
+      });
 
       let connectionTimer = null;
 
