@@ -114,13 +114,29 @@ export class P2PManager {
       // 建立 Peer (傳入高穿透性 ICE 伺服器配置)
       this.peer = new window.Peer(ICE_CONFIG);
 
+      let connectionTimer = null;
+
       this.peer.on('open', (id) => {
-        this.logStatus(`已連接訊號伺服器，正撥號給：${targetRoomId}`);
-        const conn = this.peer.connect(targetRoomId);
+        this.logStatus(`已連接信令伺服器。您的臨時 Peer ID：${id}。正在撥號給房主：${targetRoomId}...`);
+        if (this.onStatus) this.onStatus('client-peer-id', id);
+
+        // 使用高相容性的 JSON 序列化發起 P2P 連線，防止 Safari/行動端 Binary 限制卡死
+        const conn = this.peer.connect(targetRoomId, {
+          serialization: 'json',
+          reliable: true
+        });
         this.setupConnection(conn);
+
+        // 啟動 6.5 秒連線超時超貼心提示：防範房主處於對稱型 NAT 嚴格防火牆
+        connectionTimer = setTimeout(() => {
+          if (!conn.open) {
+            this.logStatus(`⚠️ 連線超時！對方房主可能處於嚴格對稱防火牆後方。請複製您的臨時 Peer ID【${id}】發給房主，讓房主在大廳主動【反向呼叫】您進行反向打洞！`);
+          }
+        }, 6500);
       });
 
       this.peer.on('error', (err) => {
+        if (connectionTimer) clearTimeout(connectionTimer);
         console.error("PeerJS error:", err);
         let tip = `連線錯誤：${err.message || '連線失敗'}`;
         if (err.type === 'network' || err.type === 'server-error' || err.type === 'socket-error') {
@@ -136,6 +152,23 @@ export class P2PManager {
     } catch (e) {
       this.logStatus(`無法加入房間：${e.message}`);
     }
+  }
+
+  /**
+   * 房主主動反向撥號（反向打洞），繞過對稱 NAT 限制
+   * @param {string} targetClientId - 遠端 Client 的臨時 Peer ID
+   */
+  reverseConnect(targetClientId) {
+    if (!this.isHost || !this.peer) {
+      this.logStatus("⚠️ 只有房主且在房間創建成功後，才能進行反向呼叫！");
+      return;
+    }
+    this.logStatus(`正在主動反向撥號給 Client【${targetClientId.substring(0, 6)}】...`);
+    const conn = this.peer.connect(targetClientId, {
+      serialization: 'json',
+      reliable: true
+    });
+    this.setupConnection(conn);
   }
 
   setupConnection(conn) {

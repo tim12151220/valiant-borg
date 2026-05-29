@@ -758,6 +758,18 @@ function initP2P() {
     navigator.clipboard.writeText(p2p.roomId);
     alert("房間 ID 已複製到剪貼簿！");
   };
+  // 終極武器：綁定房主反向呼叫事件
+  const btnReverse = document.getElementById('btn-p2p-reverse-connect');
+  if (btnReverse) {
+    btnReverse.onclick = () => {
+      const reverseId = document.getElementById('input-reverse-peer-id').value.trim();
+      if (reverseId && p2p) {
+        p2p.reverseConnect(reverseId);
+      } else {
+        alert("請先輸入朋友發送給你的臨時 Peer ID！");
+      }
+    };
+  }
 }
 
 function handlePlayerReadyNight(playerId) {
