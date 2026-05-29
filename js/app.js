@@ -1576,7 +1576,8 @@ function renderDaytimeActionHintBanner() {
         let robbedPlayerName = "";
         const match = trace.action.match(/玩家\s*(.+?)\s*的/);
         if (match) robbedPlayerName = match[1].trim();
-        const rConf = ROLES[Object.keys(ROLES).find(k => ROLES[k].id === userSelf.currentCard)];
+        // 強盜只知道搶奪那一刻自己拿到了什麼身份 (trace.role)，不應受後續搗蛋鬼等角色換牌的影響！
+        const rConf = ROLES[Object.keys(ROLES).find(k => ROLES[k].id === trace.role)];
         hintHTML = `你昨晚搶奪了玩家 <span class="hint-highlight" style="color:var(--glow-green);">${robbedPlayerName}</span> 的卡牌，你現在的最新身份是 <span class="hint-highlight" style="color:${rConf.bgGlow}; text-shadow: 0 0 5px ${rConf.bgGlow}">${rConf.icon} ${rConf.name}</span>！`;
       } else {
         hintHTML = `你昨晚選擇不發動搶奪，你現在依舊是強盜。`;
